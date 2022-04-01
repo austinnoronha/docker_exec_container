@@ -1,0 +1,69 @@
+version: '3.4'
+
+volumes:
+  docker_exec_container_vol_mongo_data:
+    external: true
+  docker_exec_container_vol_mongo_conf:
+    external: true
+  docker_exec_container_vol_mongo_log:
+    external: true
+  docker_exec_container_vol_rabbitmq_data:
+    external: true
+  docker_exec_container_vol_rabbitmq_log:
+    external: true
+  docker_exec_container_vol_rabbitmq_conf:
+    external: true
+  docker_exec_container_vol_app:
+    external: true
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+  web-api:
+    container_name: 'docker_exec_service_webapi'
+    image: docker_exec_main:${TAG:-latest}
+    restart: on-failure:5
+    networks:
+      - app-tier
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      - nosqldata
+      - rabbitmq
+    ports:
+      - "8080:8080"
+    volumes:
+      - docker_exec_container_vol_app:/usr/src/app
+
+  nosqldata:
+    container_name: 'docker_exec_service_mongodb'
+    image: mongo:latest
+    networks:
+      - app-tier
+    restart: on-failure:5
+    ports:
+      - "30001:27017"
+    volumes:
+      - docker_exec_container_vol_mongo_data:/data/db
+      - docker_exec_container_vol_mongo_log:/var/log/mongodb
+
+  rabbitmq:
+    container_name: 'docker_exec_service_rabbitmq'
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_ERLANG_COOKIE='dbfhjgf23723nndf78632'
+    hostname: rabbitmq_docker_exec_node_main
+    networks:
+      - app-tier
+    restart: on-failure:5
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+        - docker_exec_container_vol_rabbitmq_data:/var/lib/rabbitmq/
+        - docker_exec_container_vol_rabbitmq_log:/var/log/rabbitmq
+        - docker_exec_container_vol_rabbitmq_conf:/etc/rabbitmq/
+    
